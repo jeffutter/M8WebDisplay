@@ -1,8 +1,9 @@
 // Copyright 2021-2022 James Deery
 // Released under the MIT licence, https://opensource.org/licenses/MIT
 
-import { UsbConnection } from './usb.js';
-import { SerialConnection } from './serial.js';
+// import { UsbConnection } from './usb.js';
+// import { SerialConnection } from './serial.js';
+import { ProxyConnection } from './proxy.js';
 import { Parser } from './parser.js';
 import { Renderer as OldRenderer } from './renderer.js';
 import { Renderer as GlRenderer } from './gl-renderer.js';
@@ -134,19 +135,20 @@ function connectionChanged(isConnected) {
     Wake.connectionChanged(isConnected);
 }
 
-if (navigator.serial) {
-    setupConnection(
-        new SerialConnection(parser, connectionChanged),
-        '#serial-fail');
-
-} else if (navigator.usb) {
-    setupConnection(
-        new UsbConnection(parser, connectionChanged),
-        '#usb-fail');
-
-} else {
-    show('#no-serial-usb');
-}
+// if (navigator.serial) {
+//     setupConnection(
+//         new SerialConnection(parser, connectionChanged),
+//         '#serial-fail');
+//
+// } else if (navigator.usb) {
+//     setupConnection(
+//         new UsbConnection(parser, connectionChanged),
+//         '#usb-fail');
+//
+// } else {
+//     show('#no-serial-usb');
+// }
+setupConnection(new ProxyConnection(parser, connectionChanged));
 
 function setupConnection(connection, errorMessage) {
     Input.setup(connection);
@@ -161,9 +163,11 @@ function setupConnection(connection, errorMessage) {
     on(window, 'beforeunload', e =>
         connection.disconnect());
 
-    connection.connect(true).catch(() => {});
+    connection.connect(true).catch(() => { });
 }
 
 on('#info button', 'click', () => hide('#info'));
 
-setupWorker();
+if (navigator.serviceWorker) {
+    setupWorker();
+}
