@@ -17,7 +17,7 @@ export class ProxyConnection {
             inputCodec: 'Float32',
             channels: 2,
             sampleRate: 44100,
-            flushTime: 2000
+            flushTime: 10
         });
 
         var loc = window.location, uri;
