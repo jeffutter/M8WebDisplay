@@ -13,6 +13,10 @@ export class Parser {
     _i = 0;
     _renderer;
 
+    _last_r = 0;
+    _last_g = 0;
+    _last_b = 0;
+
     constructor(renderer) {
         this._renderer = renderer;
     }
@@ -20,6 +24,12 @@ export class Parser {
     _processFrame(frame) {
         switch (frame[0]) {
             case 0xfe:
+                /* Support variable sized rectangle commands
+                 If colors are omitted, the last drawn color should be used
+                 If size is omitted, the size should be 1x1 pixels
+                 So basically the command can be 5, 8, 9 or 12 bytes long */
+                // https://github.com/laamaa/m8c/blob/fa044685c437e97e846b59681abd1933b35a456e/src/command.c#L45-L92
+
                 if (frame.length === 12) {
                     this._renderer.drawRect(
                         frame[1] + frame[2] * 256,
@@ -29,6 +39,34 @@ export class Parser {
                         frame[9],
                         frame[10],
                         frame[11]);
+
+                    this._last_r = frame[9];
+                    this._last_g = frame[10];
+                    this._last_b = frame[11];
+
+                } else if (frame.length === 9) {
+                    this._renderer.drawRect(
+                        frame[1] + frame[2] * 256,
+                        frame[3] + frame[4] * 256,
+                        1,
+                        1,
+                        frame[5],
+                        frame[6],
+                        frame[7]);
+
+                    this._last_r = frame[5];
+                    this._last_g = frame[6];
+                    this._last_b = frame[7];
+
+                } else if (frame.length === 5) {
+                    this._renderer.drawRect(
+                        frame[1] + frame[2] * 256,
+                        frame[3] + frame[4] * 256,
+                        1,
+                        1,
+                        this._last_r,
+                        this._last_g,
+                        this._last_b);
 
                 } else {
                     console.log('Bad RECT frame');

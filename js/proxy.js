@@ -51,27 +51,6 @@ export class ProxyConnection {
         return !!this._socket;
     }
 
-    async _startReading() {
-        try {
-            while (this._port) {
-                const { value, done } = await this._port.reader.read();
-                if (value) {
-                    try {
-                        this._parser.process(value);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                }
-
-                if (done)
-                    return;
-            }
-        } catch (err) {
-            console.error(err);
-            this.disconnect();
-        }
-    }
-
     async _send(msg) {
         if (!this._socket)
             return;
@@ -124,7 +103,11 @@ export class ProxyConnection {
                 } else if (type == 'S') {
                     // Serial
                     const real_data = data.slice(1);
-                    self._parser.process(real_data);
+                    try {
+                        self._parser.process(real_data);
+                    } catch (err) {
+                        console.error(err);
+                    }
                 }
             });
         });
