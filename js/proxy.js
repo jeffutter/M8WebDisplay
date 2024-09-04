@@ -87,19 +87,26 @@ export class ProxyConnection {
         socket.binaryType = "arraybuffer";
         const self = this;
 
-        socket.addEventListener('open', function(e) {
+        socket.addEventListener('open', function(_e) {
             self._socket = socket;
             self._parser.reset();
             self._onConnectionChanged(true);
 
-            socket.addEventListener('message', function(event) {
+            socket.addEventListener('message', async function(event) {
                 const data = new Uint8Array(event.data);
                 const type = String.fromCharCode(data[0]);
 
                 if (type == 'A' && self._player.audioCtx.state == "running") {
                     // Audio
-                    const audio_data = new Float32Array(event.data.slice(1));
-                    self._player.feed(audio_data);
+
+                    const ds = new DecompressionStream("gzip");
+                    const decompressedStream = new Blob([new Uint8Array(event.data.slice(1))]).stream().pipeThrough(ds);
+                    (new Response(decompressedStream).blob()).then((blob) => {
+                        blob.arrayBuffer().then((ab) => {
+                            const audio_data = new Float32Array(ab);
+                            self._player.feed(audio_data);
+                        });
+                    });
                 } else if (type == 'S') {
                     // Serial
                     const real_data = data.slice(1);
