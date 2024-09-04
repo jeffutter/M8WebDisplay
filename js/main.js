@@ -8,10 +8,10 @@ import { Parser } from './parser.js';
 import { Renderer as OldRenderer } from './renderer.js';
 import { Renderer as GlRenderer } from './gl-renderer.js';
 import { show, hide, toggle, appendButton, on } from './util.js';
-import { setup as setupWorker } from './worker-setup.js';
+// import { setup as setupWorker } from './worker-setup.js';
 
 import * as Input from './input.js';
-import * as Audio from './audio.js';
+// import * as Audio from './audio.js';
 import * as Settings from './settings.js';
 import * as Firmware from './firmware.js';
 import * as Wake from './wake.js';
@@ -93,10 +93,10 @@ Settings.onChange('showControls', value => {
     resizeCanvas();
 });
 
-Settings.onChange('enableAudio', value => {
-    if (value) { Audio.enable(); }
-    else { Audio.disable(); }
-});
+// Settings.onChange('enableAudio', value => {
+//     if (value) { Audio.enable(); }
+//     else { Audio.disable(); }
+// });
 
 Settings.onChange('snapPixels', () => resizeCanvas());
 
@@ -124,12 +124,12 @@ Settings.onChange('about', () => show('#info'));
 function connectionChanged(isConnected) {
     if (isConnected) {
         hide('#buttons, .error, #info');
-        Audio.start(10);
+        // Audio.start(10);
 
     } else {
         renderer.clear();
         show('#buttons');
-        Audio.stop();
+        // Audio.stop();
     }
 
     Wake.connectionChanged(isConnected);
@@ -168,6 +168,6 @@ function setupConnection(connection, errorMessage) {
 
 on('#info button', 'click', () => hide('#info'));
 
-if (navigator.serviceWorker) {
-    setupWorker();
-}
+// if (navigator.serviceWorker) {
+//     setupWorker();
+// }

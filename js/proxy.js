@@ -1,4 +1,4 @@
-import { wait, on, off } from './util.js';
+import { on, off } from './util.js';
 
 export class ProxyConnection {
     _parser;
@@ -6,27 +6,19 @@ export class ProxyConnection {
     _waitingForUserSelection;
     _socket;
     _socketAddr;
-
-    _audioContext;
-    _audioBuffer1;
-    _audioBuffer2;
-    _currentBuffer;
-    _bufferIdx;
+    _player;
 
     constructor(parser, onConnectionChanged) {
         this._parser = parser;
         this._onConnectionChanged = onConnectionChanged;
         this._waitingForUserSelection = false;
 
-        this._audioContext = new AudioContext({
-            latencyHint: "interactive",
-            sampleRate: 44100
+        this._player = new PCMPlayer({
+            inputCodec: 'Float32',
+            channels: 2,
+            sampleRate: 44100,
+            flushTime: 2000
         });
-        // this._audioContext = new AudioContext();
-        this._audioBuffer1 = this._audioContext.createBuffer(2, this._audioContext.sampleRate * 0.1, this._audioContext.sampleRate);
-        this._audioBuffer2 = this._audioContext.createBuffer(2, this._audioContext.sampleRate * 0.1, this._audioContext.sampleRate);
-        this._currentBuffer = 0;
-        this._bufferIdx = 0;
 
         var loc = window.location, uri;
         if (loc.protocol === "https:") {
@@ -36,18 +28,17 @@ export class ProxyConnection {
         }
         this.socketAddr = uri;
 
-        if (this._audioContext.state !== 'running') {
+        if (this._player.audioCtx.state !== 'running') {
             this.waitForUserGesture();
         }
     }
-
 
     waitForUserGesture() {
         const events = ['keydown', 'mousedown', 'touchstart'];
         const self = this;
 
         function resume() {
-            self._audioContext && self._audioContext.resume();
+            self._player.audioCtx && self._player.audioCtx.resume();
             events.forEach(e =>
                 off(document, e, resume));
         }
@@ -86,9 +77,7 @@ export class ProxyConnection {
             return;
 
         try {
-            // await this._port.writer.write(new Uint8Array(msg));
-            //
-            this._socket.send(new Uint8Array(msg));
+            await this._socket.send(new Uint8Array(msg));
         } catch (err) {
             console.error(err);
             this.disconnect();
@@ -105,13 +94,6 @@ export class ProxyConnection {
 
     async sendNoteOff() {
         this._send([0x4B, 255]);
-    }
-
-    async _reset() {
-        // await this._port.writer.write(new Uint8Array([0x44]));
-        // await wait(50);
-        this._parser.reset();
-        // await this._port.writer.write(new Uint8Array([0x45, 0.12]));
     }
 
     async disconnect() {
@@ -134,47 +116,14 @@ export class ProxyConnection {
             socket.addEventListener('message', function(event) {
                 const data = new Uint8Array(event.data);
                 const type = String.fromCharCode(data[0]);
-                const real_data = data.slice(1);
 
-                if (type == 'A' && self._audioContext.state == "running") {
+                if (type == 'A' && self._player.audioCtx.state == "running") {
                     // Audio
-                    // console.log("Got Audio");
                     const audio_data = new Float32Array(event.data.slice(1));
-                    let buffer;
-                    if (self._currentBuffer == 0) {
-                        buffer = self._audioBuffer1;
-                    } else {
-                        buffer = self._audioBuffer2;
-                    }
-                    const chan0Buff = buffer.getChannelData(0);
-                    const chan1Buff = buffer.getChannelData(1);
-
-                    for (let i = 0; i < audio_data.length; i += 2) {
-                        chan0Buff[self._bufferIdx] = audio_data[i];
-                        chan1Buff[self._bufferIdx] = audio_data[i + 1];
-                        self._bufferIdx += 1;
-                    }
-                    if ((self._bufferIdx) >= buffer.length) {
-                        const thisBuffer = self._currentBuffer;
-
-                        if (self._currentBuffer == 0) {
-                            self._currentBuffer = 1;
-                        } else {
-                            self._currentBuffer = 0;
-                        }
-                        self._bufferIdx = 0;
-
-                        const source = self._audioContext.createBufferSource();
-                        source.buffer = buffer;
-                        source.connect(self._audioContext.destination);
-                        source.start();
-                        source.onended = () => {
-                            source.disconnect(self._audioContext.destination);
-                        }
-
-                    }
+                    self._player.feed(audio_data);
                 } else if (type == 'S') {
                     // Serial
+                    const real_data = data.slice(1);
                     self._parser.process(real_data);
                 }
             });
