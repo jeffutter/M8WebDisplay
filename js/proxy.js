@@ -99,7 +99,7 @@ export class ProxyConnection {
                 if (type == 'A' && self._player.audioCtx.state == "running") {
                     // Audio
 
-                    const ds = new DecompressionStream("gzip");
+                    const ds = new DecompressionStream("deflate");
                     const decompressedStream = new Blob([new Uint8Array(event.data.slice(1))]).stream().pipeThrough(ds);
                     (new Response(decompressedStream).blob()).then((blob) => {
                         blob.arrayBuffer().then((ab) => {
