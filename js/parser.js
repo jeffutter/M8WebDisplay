@@ -48,6 +48,16 @@ export class Parser {
                     this._renderer.drawRect(
                         frame[1] + frame[2] * 256,
                         frame[3] + frame[4] * 256,
+                        frame[5] + frame[6] * 256,
+                        frame[7] + frame[8] * 256,
+                        this._last_r,
+                        this._last_g,
+                        this._last_b);
+
+                } else if (frame.length === 8) {
+                    this._renderer.drawRect(
+                        frame[1] + frame[2] * 256,
+                        frame[3] + frame[4] * 256,
                         1,
                         1,
                         frame[5],
@@ -69,7 +79,7 @@ export class Parser {
                         this._last_b);
 
                 } else {
-                    console.log('Bad RECT frame');
+                    console.log('Bad RECT frame', frame);
                 }
                 break;
 
