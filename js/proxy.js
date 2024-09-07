@@ -7,17 +7,28 @@ export class ProxyConnection {
     _socket;
     _socketAddr;
     _player;
+    _decoder;
 
     constructor(parser, onConnectionChanged) {
         this._parser = parser;
         this._onConnectionChanged = onConnectionChanged;
         this._waitingForUserSelection = false;
 
+        this._decoder = new window["opus-decoder"].OpusDecoder({
+            forceStereo: false,
+            sampleRate: 48000,
+            preSkip: 0,
+            channels: 2,
+            streamCount: 1,
+            coupledStreamCount: 1,
+            channelMappingTable: [0, 1]
+        });
+
         this._player = new PCMPlayer({
             inputCodec: 'Float32',
             channels: 2,
-            sampleRate: 44100,
-            flushTime: 10
+            sampleRate: 48000,
+            flushTime: 20
         });
 
         var loc = window.location, uri;
@@ -99,14 +110,9 @@ export class ProxyConnection {
                 if (type == 'A' && self._player.audioCtx.state == "running") {
                     // Audio
 
-                    const ds = new DecompressionStream("deflate");
-                    const decompressedStream = new Blob([new Uint8Array(event.data.slice(1))]).stream().pipeThrough(ds);
-                    (new Response(decompressedStream).blob()).then((blob) => {
-                        blob.arrayBuffer().then((ab) => {
-                            const audio_data = new Float32Array(ab);
-                            self._player.feed(audio_data);
-                        });
-                    });
+                    const encoded = new Uint8Array(event.data.slice(1));
+                    const decoded = self._decoder.decodeFrame(encoded);
+                    self._player.feed(self.getInterleaved(decoded.channelData, decoded.samplesDecoded));
                 } else if (type == 'S') {
                     // Serial
                     const real_data = data.slice(1);
@@ -120,4 +126,16 @@ export class ProxyConnection {
         });
 
     }
+
+    getInterleaved(channelData, samples) {
+        const interleaved = new Float32Array(samples * channelData.length);
+
+        for (let offset = 0, interleavedOffset = 0; offset < samples; offset++) {
+            for (let channel = 0; channel < channelData.length; channel++) {
+                interleaved[interleavedOffset++] = channelData[channel][offset];
+            }
+        }
+
+        return interleaved;
+    };
 }
